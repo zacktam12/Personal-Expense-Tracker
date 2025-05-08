@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:collection/collection.dart'; // For firstWhereOrNull
 import '../models/expense_model.dart';
 import '../models/category_model.dart';
 import '../services/api_service.dart';
@@ -11,11 +13,10 @@ final apiServiceProvider = Provider<ApiService>((ref) {
 
 // Categories provider
 final categoriesProvider = FutureProvider<List<Category>>((ref) async {
-  final apiService = ref.watch(apiServiceProvider);
+  final apiService = ref.read(apiServiceProvider);
   try {
     return await apiService.getCategories();
   } catch (e) {
-    // If API fails, return default categories
     return defaultCategories;
   }
 });
@@ -23,23 +24,18 @@ final categoriesProvider = FutureProvider<List<Category>>((ref) async {
 // Category by ID provider
 final categoryByIdProvider = Provider.family<Category?, String>((ref, id) {
   final categoriesAsyncValue = ref.watch(categoriesProvider);
-  return categoriesAsyncValue.when(
-    data: (categories) => categories.firstWhere(
-      (category) => category.id == id,
-      orElse: () => defaultCategories[0],
-    ),
-    loading: () => null,
-    error: (_, __) => null,
+  return categoriesAsyncValue.maybeWhen(
+    data: (categories) => categories.firstWhereOrNull((c) => c.id == id),
+    orElse: () => null,
   );
 });
 
 // Date range provider
 final dateRangeProvider = StateProvider<DateRange>((ref) {
-  // Default to current month
   final now = DateTime.now();
   final startOfMonth = DateTime(now.year, now.month, 1);
   final endOfMonth = DateTime(now.year, now.month + 1, 0);
-  
+
   return DateRange(
     start: startOfMonth,
     end: endOfMonth,
@@ -49,9 +45,8 @@ final dateRangeProvider = StateProvider<DateRange>((ref) {
 
 // Expenses provider
 final expensesProvider = FutureProvider<List<Expense>>((ref) async {
-  final apiService = ref.watch(apiServiceProvider);
+  final apiService = ref.read(apiServiceProvider);
   final dateRange = ref.watch(dateRangeProvider);
-  
   return await apiService.getExpensesByDateRange(
     dateRange.start,
     dateRange.end,
@@ -61,58 +56,58 @@ final expensesProvider = FutureProvider<List<Expense>>((ref) async {
 // Total expenses provider
 final totalExpensesProvider = Provider<double>((ref) {
   final expensesAsyncValue = ref.watch(expensesProvider);
-  
+
   return expensesAsyncValue.when(
-    data: (expenses) {
-      return expenses.fold(0, (sum, expense) => sum + expense.amount);
-    },
+    data: (expenses) =>
+        expenses.fold(0, (sum, expense) => sum + expense.amount),
     loading: () => 0,
     error: (_, __) => 0,
   );
 });
 
-// Expenses by category provider
-final expensesByCategoryProvider = Provider<Map<String, double>>((ref) {
-  final expensesAsyncValue = ref.watch(expensesProvider);
-  
-  return expensesAsyncValue.when(
-    data: (expenses) {
+// Expenses by category provider (returns AsyncValue)
+final expensesByCategoryProvider =
+    Provider<AsyncValue<Map<String, double>>>((ref) {
+  final expenses = ref.watch(expensesProvider);
+  return expenses.map(
+    data: (data) {
       final map = <String, double>{};
-      for (final expense in expenses) {
-        map[expense.categoryId] = (map[expense.categoryId] ?? 0) + expense.amount;
+      for (final e in data.value) {
+        map[e.categoryId] = (map[e.categoryId] ?? 0) + e.amount;
       }
-      return map;
+      return AsyncValue.data(map);
     },
-    loading: () => {},
-    error: (_, __) => {},
+    loading: (_) => const AsyncValue.loading(),
+    error: (err, stack) => AsyncValue.error(err, stack),
   );
 });
 
-// Expenses by day provider (for line chart)
-final expensesByDayProvider = Provider<Map<DateTime, double>>((ref) {
-  final expensesAsyncValue = ref.watch(expensesProvider);
-  
-  return expensesAsyncValue.when(
-    data: (expenses) {
+// Expenses by day provider (returns AsyncValue)
+final expensesByDayProvider =
+    Provider<AsyncValue<Map<DateTime, double>>>((ref) {
+  final expenses = ref.watch(expensesProvider);
+  return expenses.map(
+    data: (data) {
       final map = <DateTime, double>{};
-      for (final expense in expenses) {
-        final date = DateTime(expense.date.year, expense.date.month, expense.date.day);
-        map[date] = (map[date] ?? 0) + expense.amount;
+      for (final e in data.value) {
+        final day = DateTime(e.date.year, e.date.month, e.date.day);
+        map[day] = (map[day] ?? 0) + e.amount;
       }
-      return map;
+      return AsyncValue.data(map);
     },
-    loading: () => {},
-    error: (_, __) => {},
+    loading: (_) => const AsyncValue.loading(),
+    error: (err, stack) => AsyncValue.error(err, stack),
   );
 });
 
-// Date range class
+// Immutable DateRange class
+@immutable
 class DateRange {
   final DateTime start;
   final DateTime end;
   final DateRangeType type;
 
-  DateRange({
+  const DateRange({
     required this.start,
     required this.end,
     required this.type,
@@ -137,6 +132,18 @@ class DateRange {
         return 'Custom Range';
     }
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DateRange &&
+          runtimeType == other.runtimeType &&
+          start == other.start &&
+          end == other.end &&
+          type == other.type;
+
+  @override
+  int get hashCode => start.hashCode ^ end.hashCode ^ type.hashCode;
 }
 
 enum DateRangeType { day, week, month, year, custom }
