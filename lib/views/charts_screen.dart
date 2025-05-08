@@ -9,7 +9,7 @@ class ChartsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dateRange = ref.watch(dateRangeProvider);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Expense Analytics'),
@@ -19,78 +19,73 @@ class ChartsScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Date range display
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Period',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    Text(
-                      dateRange.formattedRange,
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
+            _buildDateRangeCard(context, dateRange),
             const SizedBox(height: 24),
-            
-            // Category breakdown (pie chart)
-            Text(
-              'Spending by Category',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            const SizedBox(
-              height: 300,
-              child: CustomChart(
+            _buildChartSection(
+              context,
+              title: 'Spending by Category',
+              chart: const CustomChart(
                 isDetailed: true,
                 chartType: ChartType.pie,
               ),
             ),
-            
             const SizedBox(height: 32),
-            
-            // Monthly comparison (bar chart)
-            Text(
-              'Monthly Comparison',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            const SizedBox(
-              height: 300,
-              child: CustomChart(
+            _buildChartSection(
+              context,
+              title: 'Monthly Comparison',
+              chart: const CustomChart(
                 isDetailed: true,
                 chartType: ChartType.bar,
               ),
             ),
-            
             const SizedBox(height: 32),
-            
-            // Weekly trend (line chart)
-            Text(
-              'Weekly Spending Trend',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            const SizedBox(
-              height: 300,
-              child: CustomChart(
+            _buildChartSection(
+              context,
+              title: 'Weekly Spending Trend',
+              chart: const CustomChart(
                 isDetailed: true,
                 chartType: ChartType.line,
               ),
             ),
-            
-            const SizedBox(height: 16),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildDateRangeCard(BuildContext context, DateRange dateRange) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Period',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            Text(
+              dateRange.formattedRange,
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChartSection(BuildContext context,
+      {required String title, required Widget chart}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 8),
+        SizedBox(height: 300, child: chart),
+      ],
     );
   }
 }
