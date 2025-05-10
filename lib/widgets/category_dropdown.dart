@@ -1,54 +1,58 @@
 import 'package:flutter/material.dart';
-import '../models/category_model.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/category.dart';
+import '../providers/category_provider.dart';
 
-class CategoryDropdown extends StatelessWidget {
-  final List<Category> categories;
-  final String? selectedCategoryId;
-  final Function(String) onChanged;
-  
+class CategoryDropdown extends ConsumerWidget {
+  final String? value;
+  final Function(String?) onChanged;
+
   const CategoryDropdown({
     Key? key,
-    required this.categories,
-    required this.selectedCategoryId,
+    this.value,
     required this.onChanged,
   }) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    return InputDecorator(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final categories = ref.watch(categoriesProvider);
+
+    return DropdownButtonFormField<String>(
+      value: value,
       decoration: const InputDecoration(
         labelText: 'Category',
-        prefixIcon: Icon(Icons.category),
         border: OutlineInputBorder(),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selectedCategoryId,
-          isDense: true,
-          isExpanded: true,
-          items: categories.map((category) {
-            return DropdownMenuItem<String>(
-              value: category.id,
-              child: Row(
-                children: [
-                  Icon(
-                    category.icon,
-                    color: category.color,
-                    size: 20,
+      items: categories.map((Category category) {
+        return DropdownMenuItem<String>(
+          value: category.name,
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: category.colorValue,
+                radius: 12,
+                child: Icon(
+                  IconData(
+                    int.parse('0xe${category.icon}', radix: 16),
+                    fontFamily: 'MaterialIcons',
                   ),
-                  const SizedBox(width: 8),
-                  Text(category.name),
-                ],
+                  color: Colors.white,
+                  size: 14,
+                ),
               ),
-            );
-          }).toList(),
-          onChanged: (value) {
-            if (value != null) {
-              onChanged(value);
-            }
-          },
-        ),
-      ),
+              const SizedBox(width: 10),
+              Text(category.name),
+            ],
+          ),
+        );
+      }).toList(),
+      onChanged: onChanged,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please select a category';
+        }
+        return null;
+      },
     );
   }
 }

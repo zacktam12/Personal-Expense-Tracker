@@ -1,36 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'views/home_screen.dart';
-import 'theme/light_theme.dart';
-import 'theme/dark_theme.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'services/database_service.dart';
+import 'providers/theme_provider.dart';
+import 'screens/home_screen.dart';
 
-// Theme provider
-final themeProvider = StateNotifierProvider<ThemeNotifier, bool>((ref) {
-  return ThemeNotifier();
-});
-
-class ThemeNotifier extends StateNotifier<bool> {
-  ThemeNotifier() : super(false) {
-    _loadTheme();
-  }
-
-  void _loadTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    state = prefs.getBool('isDarkMode') ?? false;
-  }
-
-  void toggleTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    state = !state;
-    prefs.setBool('isDarkMode', state);
-  }
-}
-
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ProviderScope(child: MyApp()));
+  
+  // Initialize Hive database
+  await DatabaseService.initialize();
+  
+  runApp(
+    const ProviderScope(
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends ConsumerWidget {
@@ -38,14 +23,16 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDarkMode = ref.watch(themeProvider);
-    
+    final themeMode = ref.watch(themeModeProvider);
+    final lightTheme = ref.watch(lightThemeProvider);
+    final darkTheme = ref.watch(darkThemeProvider);
+
     return MaterialApp(
       title: 'Expense Tracker',
-      debugShowCheckedModeBanner: false,
       theme: lightTheme,
       darkTheme: darkTheme,
-      themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      themeMode: themeMode,
+      debugShowCheckedModeBanner: false,
       home: const HomeScreen(),
     );
   }

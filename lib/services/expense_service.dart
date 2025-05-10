@@ -1,144 +1,73 @@
-import 'package:dio/dio.dart';
-import '../models/expense_model.dart';
-import '../models/category_model.dart';
+import '../models/expense.dart';
+import 'database_service.dart';
 
-class ApiService {
-  final Dio _dio = Dio();
-  final String baseUrl = 'https://your-api-endpoint.com/api';
-  
-  // Authentication token
-  String? _token;
-  
-  // Set token after login
-  void setToken(String token) {
-    _token = token;
-    _dio.options.headers['Authorization'] = 'Bearer $_token';
+class ExpenseService {
+  // Add a new expense
+  Future<void> addExpense(Expense expense) async {
+    await DatabaseService.expensesBox.add(expense);
   }
-  
-  // EXPENSE ENDPOINTS
-  
-  // Get all expenses
-  Future<List<Expense>> getExpenses() async {
-    try {
-      final response = await _dio.get('$baseUrl/expenses');
-      return (response.data as List)
-          .map((json) => Expense.fromJson(json))
-          .toList();
-    } catch (e) {
-      throw _handleError(e);
+
+  // Update an existing expense
+  Future<void> updateExpense(Expense expense) async {
+    final index = DatabaseService.expensesBox.values
+        .toList()
+        .indexWhere((e) => e.id == expense.id);
+
+    if (index != -1) {
+      await DatabaseService.expensesBox.putAt(index, expense);
     }
   }
-  
-  // Get expenses by date range
-  Future<List<Expense>> getExpensesByDateRange(DateTime start, DateTime end) async {
-    try {
-      final response = await _dio.get(
-        '$baseUrl/expenses',
-        queryParameters: {
-          'startDate': start.toIso8601String(),
-          'endDate': end.toIso8601String(),
-        },
-      );
-      return (response.data as List)
-          .map((json) => Expense.fromJson(json))
-          .toList();
-    } catch (e) {
-      throw _handleError(e);
-    }
-  }
-  
-  // Create expense
-  Future<Expense> createExpense(Expense expense) async {
-    try {
-      final response = await _dio.post(
-        '$baseUrl/expenses',
-        data: expense.toJson(),
-      );
-      return Expense.fromJson(response.data);
-    } catch (e) {
-      throw _handleError(e);
-    }
-  }
-  
-  // Update expense
-  Future<Expense> updateExpense(String id, Expense expense) async {
-    try {
-      final response = await _dio.put(
-        '$baseUrl/expenses/$id',
-        data: expense.toJson(),
-      );
-      return Expense.fromJson(response.data);
-    } catch (e) {
-      throw _handleError(e);
-    }
-  }
-  
-  // Delete expense
+
+  // Delete an expense
   Future<void> deleteExpense(String id) async {
-    try {
-      await _dio.delete('$baseUrl/expenses/$id');
-    } catch (e) {
-      throw _handleError(e);
+    final index = DatabaseService.expensesBox.values
+        .toList()
+        .indexWhere((e) => e.id == id);
+
+    if (index != -1) {
+      await DatabaseService.expensesBox.deleteAt(index);
     }
   }
-  
-  // CATEGORY ENDPOINTS
-  
-  // Get all categories
-  Future<List<Category>> getCategories() async {
-    try {
-      final response = await _dio.get('$baseUrl/categories');
-      return (response.data as List)
-          .map((json) => Category.fromJson(json))
-          .toList();
-    } catch (e) {
-      throw _handleError(e);
-    }
+
+  // Get all expenses
+  List<Expense> getAllExpenses() {
+    return DatabaseService.expensesBox.values.toList();
   }
-  
-  // Create category
-  Future<Category> createCategory(Category category) async {
-    try {
-      final response = await _dio.post(
-        '$baseUrl/categories',
-        data: category.toJson(),
-      );
-      return Category.fromJson(response.data);
-    } catch (e) {
-      throw _handleError(e);
-    }
+
+  // Get expenses by category
+  List<Expense> getExpensesByCategory(String category) {
+    return DatabaseService.expensesBox.values
+        .where((expense) => expense.category == category)
+        .toList();
   }
-  
-  // Update category
-  Future<Category> updateCategory(String id, Category category) async {
-    try {
-      final response = await _dio.put(
-        '$baseUrl/categories/$id',
-        data: category.toJson(),
-      );
-      return Category.fromJson(response.data);
-    } catch (e) {
-      throw _handleError(e);
-    }
+
+  // Get expenses by date range
+  List<Expense> getExpensesByDateRange(DateTime start, DateTime end) {
+    return DatabaseService.expensesBox.values
+        .where((expense) =>
+            expense.date.isAfter(start.subtract(const Duration(days: 1))) &&
+            expense.date.isBefore(end.add(const Duration(days: 1))))
+        .toList();
   }
-  
-  // Delete category
-  Future<void> deleteCategory(String id) async {
-    try {
-      await _dio.delete('$baseUrl/categories/$id');
-    } catch (e) {
-      throw _handleError(e);
-    }
+
+  // Get total amount spent
+  double getTotalAmount() {
+    return DatabaseService.expensesBox.values
+        .fold(0, (sum, expense) => sum + expense.amount);
   }
-  
-  // Error handling
-  Exception _handleError(dynamic error) {
-    if (error is DioException) {
-      if (error.response != null) {
-        return Exception(error.response?.data['message'] ?? 'An error occurred');
+
+  // Get total amount by category
+  Map<String, double> getTotalByCategory() {
+    final result = <String, double>{};
+
+    for (final expense in DatabaseService.expensesBox.values) {
+      if (result.containsKey(expense.category)) {
+        result[expense.category] = result[expense.category]! + expense.amount;
+      } else {
+        result[expense.category] = expense.amount;
       }
-      return Exception('Network error: ${error.message}');
     }
-    return Exception('Unexpected error: $error');
+
+    return result;
   }
 }
