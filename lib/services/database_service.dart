@@ -1,74 +1,63 @@
-import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart';
+import '../models/expense.dart';
+import '../models/category.dart';
 
-part 'category.g.dart';
+class DatabaseService {
+  static const String expenseBoxName = 'expenses';
+  static const String categoryBoxName = 'categories';
+  static const String settingsBoxName = 'settings';
 
-@HiveType(typeId: 1)
-class Category extends HiveObject {
-  @HiveField(0)
-  final String name;
+  static Future<void> initialize() async {
+    final appDocumentDir = await getApplicationDocumentsDirectory();
+    await Hive.initFlutter(appDocumentDir.path);
 
-  @HiveField(1)
-  final String icon;
+    // Register adapters
+    if (!Hive.isAdapterRegistered(0)) {
+      Hive.registerAdapter(ExpenseAdapter());
+    }
+    
+    if (!Hive.isAdapterRegistered(1)) {
+      Hive.registerAdapter(CategoryAdapter());
+    }
 
-  @HiveField(2)
-  final String color;
+    // Open boxes
+    await Hive.openBox<Expense>(expenseBoxName);
+    await Hive.openBox<Category>(categoryBoxName);
+    await Hive.openBox(settingsBoxName);
 
-  Category({
-    required this.name,
-    required this.icon,
-    required this.color,
-  });
-
-  // Helper method to get color as a Color object
-  Color get colorValue => Color(int.parse(color, radix: 16) | 0xFF000000);
-
-  // Create a copy of this category with optional new values
-  Category copyWith({
-    String? name,
-    String? icon,
-    String? color,
-  }) {
-    return Category(
-      name: name ?? this.name,
-      icon: icon ?? this.icon,
-      color: color ?? this.color,
-    );
+    // Initialize default categories if none exist
+    final categoryBox = Hive.box<Category>(categoryBoxName);
+    if (categoryBox.isEmpty) {
+      final defaultCategories = Category.defaultCategories();
+      for (var category in defaultCategories) {
+        await categoryBox.put(category.id, category);
+      }
+    }
   }
 
-  // Default categories
-  static List<Category> defaultCategories() {
-    return [
-      Category(
-        name: 'Food',
-        icon: 'restaurant',
-        color: 'FF6D28',
-      ),
-      Category(
-        name: 'Transport',
-        icon: 'directions_car',
-        color: '367BF5',
-      ),
-      Category(
-        name: 'Shopping',
-        icon: 'shopping_bag',
-        color: 'D800A6',
-      ),
-      Category(
-        name: 'Bills',
-        icon: 'receipt',
-        color: '16BF78',
-      ),
-      Category(
-        name: 'Entertainment',
-        icon: 'movie',
-        color: 'F2BD27',
-      ),
-      Category(
-        name: 'Other',
-        icon: 'more_horiz',
-        color: '808080',
-      ),
-    ];
+  static Box<Expense> getExpenseBox() {
+    return Hive.box<Expense>(expenseBoxName);
+  }
+
+  static Box<Category> getCategoryBox() {
+    return Hive.box<Category>(categoryBoxName);
+  }
+
+  static Box getSettingsBox() {
+    return Hive.box(settingsBoxName);
+  }
+
+  static Future<void> clearAllData() async {
+    await getExpenseBox().clear();
+    
+    // Clear categories but keep default ones
+    final categoryBox = getCategoryBox();
+    final defaultCategories = Category.defaultCategories();
+    await categoryBox.clear();
+    
+    for (var category in defaultCategories) {
+      await categoryBox.put(category.id, category);
+    }
   }
 }

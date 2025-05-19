@@ -1,73 +1,119 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:uuid/uuid.dart';
 
 part 'category.g.dart';
 
 @HiveType(typeId: 1)
-class Category extends HiveObject {
+class Category {
   @HiveField(0)
-  final String name;
+  final String id;
 
   @HiveField(1)
-  final String icon;
+  final String name;
 
   @HiveField(2)
-  final String color;
+  final int colorValue;
+
+  @HiveField(3)
+  final int iconCodePoint;
+
+  @HiveField(4)
+  final String? iconFontFamily;
+
+  @HiveField(5)
+  final bool isDefault;
 
   Category({
+    String? id,
     required this.name,
-    required this.icon,
-    required this.color,
-  });
+    required this.colorValue,
+    required IconData icon,
+    this.isDefault = false,
+  }) : 
+    id = id ?? const Uuid().v4(),
+    iconCodePoint = icon.codePoint,
+    iconFontFamily = icon.fontFamily;
 
-  // Helper method to get color as a Color object
-  Color get colorValue => Color(int.parse(color, radix: 16) | 0xFF000000);
+  Color get color => Color(colorValue);
 
-  // Create a copy of this category with optional new values
+  IconData get icon => IconData(
+    iconCodePoint,
+    fontFamily: iconFontFamily,
+  );
+
   Category copyWith({
     String? name,
-    String? icon,
-    String? color,
+    int? colorValue,
+    IconData? icon,
+    bool? isDefault,
   }) {
     return Category(
+      id: this.id,
       name: name ?? this.name,
+      colorValue: colorValue ?? this.colorValue,
       icon: icon ?? this.icon,
-      color: color ?? this.color,
+      isDefault: isDefault ?? this.isDefault,
     );
   }
 
-  // Default categories
   static List<Category> defaultCategories() {
     return [
       Category(
-        name: 'Food',
-        icon: 'restaurant',
-        color: 'FF6D28',
+        id: 'food',
+        name: 'Food & Dining',
+        colorValue: Colors.red.value,
+        icon: Icons.restaurant,
+        isDefault: true,
       ),
       Category(
-        name: 'Transport',
-        icon: 'directions_car',
-        color: '367BF5',
+        id: 'transportation',
+        name: 'Transportation',
+        colorValue: Colors.blue.value,
+        icon: Icons.directions_car,
+        isDefault: true,
       ),
       Category(
-        name: 'Shopping',
-        icon: 'shopping_bag',
-        color: 'D800A6',
-      ),
-      Category(
-        name: 'Bills',
-        icon: 'receipt',
-        color: '16BF78',
-      ),
-      Category(
+        id: 'entertainment',
         name: 'Entertainment',
-        icon: 'movie',
-        color: 'F2BD27',
+        colorValue: Colors.purple.value,
+        icon: Icons.movie,
+        isDefault: true,
       ),
       Category(
+        id: 'shopping',
+        name: 'Shopping',
+        colorValue: Colors.pink.value,
+        icon: Icons.shopping_bag,
+        isDefault: true,
+      ),
+      Category(
+        id: 'utilities',
+        name: 'Utilities',
+        colorValue: Colors.orange.value,
+        icon: Icons.power,
+        isDefault: true,
+      ),
+      Category(
+        id: 'health',
+        name: 'Health',
+        colorValue: Colors.green.value,
+        icon: Icons.medical_services,
+        isDefault: true,
+      ),
+      Category(
+        id: 'education',
+        name: 'Education',
+        colorValue: Colors.amber.value,
+        icon: Icons.school,
+        isDefault: true,
+      ),
+      Category(
+        id: 'other',
         name: 'Other',
-        icon: 'more_horiz',
-        color: '808080',
+        colorValue: Colors.grey.value,
+        icon: Icons.more_horiz,
+        isDefault: true,
       ),
     ];
   }

@@ -1,46 +1,61 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 import '../models/category.dart';
-import '../services/database_service.dart';
+import '../services/expense_service.dart';
 
-final categoriesProvider = StateNotifierProvider<CategoriesNotifier, List<Category>>((ref) {
-  return CategoriesNotifier();
-});
+class CategoryProvider with ChangeNotifier {
+  final ExpenseService _expenseService = ExpenseService();
+  List<Category> _categories = [];
 
-class CategoriesNotifier extends StateNotifier<List<Category>> {
-  CategoriesNotifier() : super([]) {
-    loadCategories();
+  CategoryProvider() {
+    _loadCategories();
   }
-  
-  void loadCategories() {
-    state = DatabaseService.categoriesBox.values.toList();
+
+  List<Category> get categories => _categories;
+
+  Future<void> _loadCategories() async {
+    _categories = _expenseService.getAllCategories();
+    notifyListeners();
   }
-  
+
   Future<void> addCategory(Category category) async {
-    await DatabaseService.categoriesBox.add(category);
-    state = [...state, category];
+    await _expenseService.addCategory(category);
+    await _loadCategories();
   }
-  
-  Future<void> updateCategory(int index, Category category) async {
-    await DatabaseService.categoriesBox.putAt(index, category);
-    state = [
-      for (int i = 0; i < state.length; i++)
-        if (i == index) category else state[i],
-    ];
+
+  Future<void> updateCategory(Category category) async {
+    await _expenseService.updateCategory(category);
+    await _loadCategories();
   }
-  
-  Future<void> deleteCategory(int index) async {
-    await DatabaseService.categoriesBox.deleteAt(index);
-    state = [
-      for (int i = 0; i < state.length; i++)
-        if (i != index) state[i],
-    ];
-  }
-  
-  Category? getCategoryByName(String name) {
+
+  Future<void> deleteCategory(String id) async {
     try {
-      return state.firstWhere((category) => category.name == name);
-    } catch (_) {
-      return null;
+      await _expenseService.deleteCategory(id);
+      await _loadCategories();
+    } catch (e) {
+      rethrow;
     }
+  }
+
+  Category? getCategory(String id) {
+    return _expenseService.getCategory(id);
+  }
+
+  List<Category> getUserDefinedCategories() {
+    return _categories.where((category) => !category.isDefault).toList();
+  }
+
+  List<Category> getDefaultCategories() {
+    return _categories.where((category) => category.isDefault).toList();
+  }
+
+  // Get category by ID with fallback to "Other" if not found
+  Category getCategoryById(String id) {
+    return _categories.firstWhere(
+      (category) => category.id == id,
+      orElse: () => _categories.firstWhere(
+        (category) => category.name == 'Other',
+        orElse: () => Category.defaultCategories().last,
+      ),
+    );
   }
 }

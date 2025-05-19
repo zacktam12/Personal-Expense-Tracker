@@ -4,44 +4,48 @@ import 'package:uuid/uuid.dart';
 part 'expense.g.dart';
 
 @HiveType(typeId: 0)
-class Expense extends HiveObject {
+class Expense {
   @HiveField(0)
   final String id;
 
   @HiveField(1)
-  final double amount;
+  final String title;
 
   @HiveField(2)
-  final String category;
+  final double amount;
 
   @HiveField(3)
   final DateTime date;
 
   @HiveField(4)
-  final String note;
+  final String categoryId;
+
+  @HiveField(5)
+  final String? notes;
 
   Expense({
     String? id,
+    required this.title,
     required this.amount,
-    required this.category,
     required this.date,
-    this.note = '',
+    required this.categoryId,
+    this.notes,
   }) : id = id ?? const Uuid().v4();
 
-  // Create a copy of this expense with optional new values
   Expense copyWith({
-    String? id,
+    String? title,
     double? amount,
-    String? category,
     DateTime? date,
-    String? note,
+    String? categoryId,
+    String? notes,
   }) {
     return Expense(
-      id: id ?? this.id,
+      id: this.id,
+      title: title ?? this.title,
       amount: amount ?? this.amount,
-      category: category ?? this.category,
       date: date ?? this.date,
-      note: note ?? this.note,
+      categoryId: categoryId ?? this.categoryId,
+      notes: notes ?? this.notes,
     );
   }
 }

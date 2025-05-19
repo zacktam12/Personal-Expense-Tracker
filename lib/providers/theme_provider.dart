@@ -1,73 +1,108 @@
-import '../models/expense.dart';
-import 'database_service.dart';
+import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+import '../services/database_service.dart';
 
-class ExpenseService {
-  // Add a new expense
-  Future<void> addExpense(Expense expense) async {
-    await DatabaseService.expensesBox.add(expense);
+class ThemeProvider with ChangeNotifier {
+  late Box _settingsBox;
+  bool _isDarkMode = false;
+  
+  ThemeProvider() {
+    _settingsBox = DatabaseService.getSettingsBox();
+    _loadThemePreference();
   }
   
-  // Update an existing expense
-  Future<void> updateExpense(Expense expense) async {
-    final index = DatabaseService.expensesBox.values
-        .toList()
-        .indexWhere((e) => e.id == expense.id);
-    
-    if (index != -1) {
-      await DatabaseService.expensesBox.putAt(index, expense);
-    }
+  bool get isDarkMode => _isDarkMode;
+  
+  ThemeMode get themeMode => _isDarkMode ? ThemeMode.dark : ThemeMode.light;
+  
+  void _loadThemePreference() {
+    _isDarkMode = _settingsBox.get('isDarkMode', defaultValue: false);
+    notifyListeners();
   }
   
-  // Delete an expense
-  Future<void> deleteExpense(String id) async {
-    final index = DatabaseService.expensesBox.values
-        .toList()
-        .indexWhere((e) => e.id == id);
-    
-    if (index != -1) {
-      await DatabaseService.expensesBox.deleteAt(index);
-    }
+  void toggleTheme() {
+    _isDarkMode = !_isDarkMode;
+    _settingsBox.put('isDarkMode', _isDarkMode);
+    notifyListeners();
   }
   
-  // Get all expenses
-  List<Expense> getAllExpenses() {
-    return DatabaseService.expensesBox.values.toList();
+  // Light theme
+  ThemeData get lightTheme {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: Colors.blue,
+        brightness: Brightness.light,
+      ),
+      appBarTheme: const AppBarTheme(
+        elevation: 0,
+        centerTitle: true,
+      ),
+      cardTheme: CardTheme(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        filled: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        elevation: 4,
+      ),
+    );
   }
   
-  // Get expenses by category
-  List<Expense> getExpensesByCategory(String category) {
-    return DatabaseService.expensesBox.values
-        .where((expense) => expense.category == category)
-        .toList();
-  }
-  
-  // Get expenses by date range
-  List<Expense> getExpensesByDateRange(DateTime start, DateTime end) {
-    return DatabaseService.expensesBox.values
-        .where((expense) => 
-            expense.date.isAfter(start.subtract(const Duration(days: 1))) && 
-            expense.date.isBefore(end.add(const Duration(days: 1))))
-        .toList();
-  }
-  
-  // Get total amount spent
-  double getTotalAmount() {
-    return DatabaseService.expensesBox.values
-        .fold(0, (sum, expense) => sum + expense.amount);
-  }
-  
-  // Get total amount by category
-  Map<String, double> getTotalByCategory() {
-    final result = <String, double>{};
-    
-    for (final expense in DatabaseService.expensesBox.values) {
-      if (result.containsKey(expense.category)) {
-        result[expense.category] = result[expense.category]! + expense.amount;
-      } else {
-        result[expense.category] = expense.amount;
-      }
-    }
-    
-    return result;
+  // Dark theme
+  ThemeData get darkTheme {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: Colors.blue,
+        brightness: Brightness.dark,
+      ),
+      appBarTheme: const AppBarTheme(
+        elevation: 0,
+        centerTitle: true,
+      ),
+      cardTheme: CardTheme(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        filled: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        elevation: 4,
+      ),
+    );
   }
 }
